@@ -3,196 +3,27 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import multer from "multer";
-import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
-import { initializeApp as initAdminApp, getApps as getAdminApps } from "firebase-admin/app";
-import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { config } from "./config";
+import {
+  StoredFile,
+  fileRegistry,
+  db,
+  syncSaveFile,
+  getOrFetchStoredFile,
+  deleteStoredFile,
+} from "./db";
+import { uploadToStorage, downloadFromStorage } from "./storage";
 
-// Load environment variables
-dotenv.config({ path: path.join(process.cwd(), ".env.local") });
-dotenv.config();
-
-// Retention Policy: Default 24 Hours (1440m), Maximum 3 Days (4320m)
-const DEFAULT_EXPIRATION_MINUTES = 24 * 60; // 24 Hours
-const MAX_EXPIRATION_MINUTES = 3 * 24 * 60; // 3 Days
-const MAX_RETENTION_MS = MAX_EXPIRATION_MINUTES * 60 * 1000;
-
-// Supabase Storage Configuration
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://jofcylritxybpwievaqe.supabase.co";
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_HFSnuv_oiEmiO4Sodkt-Pw_3LJtgRj3";
-const SUPABASE_STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "nyvo-share-files";
-
-let supabase: SupabaseClient | null = null;
-if (SUPABASE_URL && SUPABASE_KEY) {
-  try {
-    supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-    console.log(`Supabase Storage initialized with URL: ${SUPABASE_URL}, Bucket: ${SUPABASE_STORAGE_BUCKET}`);
-
-    // Verify / attempt to prepare bucket
-    supabase.storage.getBucket(SUPABASE_STORAGE_BUCKET).then(async ({ error }) => {
-      if (error && supabase) {
-        const createRes = await supabase.storage.createBucket(SUPABASE_STORAGE_BUCKET, { public: true });
-        if (!createRes.error) {
-          console.log(`Created Supabase storage bucket: ${SUPABASE_STORAGE_BUCKET}`);
-        } else {
-          console.log(`Note: If bucket '${SUPABASE_STORAGE_BUCKET}' does not exist, create it in your Supabase Dashboard under Storage.`);
-        }
-      } else {
-        console.log(`Supabase Storage bucket '${SUPABASE_STORAGE_BUCKET}' ready.`);
-      }
-    }).catch(() => {});
-  } catch (err) {
-    console.warn("Supabase init error:", err);
-  }
+// Ensure local temporary directory exists
+if (!fs.existsSync(config.uploads.dir)) {
+  fs.mkdirSync(config.uploads.dir, { recursive: true });
 }
 
-interface StoredFile {
-  id: string;
-  slug: string;
-  originalName: string;
-  mimeType: string;
-  size: number;
-  filePath: string;
-  storageType?: "supabase" | "local";
-  storagePath?: string;
-  createdAt: number;
-  expiresAt: number | null;
-  maxDownloads: number | null;
-  downloadCount: number;
-  passwordHash?: string;
-  isBurnAfterRead: boolean;
-  deleteToken: string;
-}
-
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
-
-// In-memory registry for ultra-fast lookups
-const fileRegistry = new Map<string, StoredFile>();
-
-// Initialize Firebase Firestore Database (Server-side)
-let db: FirebaseFirestore.Firestore | null = null;
-
-try {
-  const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-  if (fs.existsSync(configPath)) {
-    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-    if (getAdminApps().length === 0) {
-      initAdminApp({
-        projectId: config.projectId,
-      });
-    }
-    db = config.firestoreDatabaseId
-      ? getAdminFirestore(getAdminApps()[0], config.firestoreDatabaseId)
-      : getAdminFirestore(getAdminApps()[0]);
-    console.log("Firebase Firestore initialized with Database ID:", config.firestoreDatabaseId || "default");
-  }
-} catch (err) {
-  console.warn("Firebase Admin setup warning:", err);
-}
-
-// Helper: Save file metadata to Memory & Firestore
-async function syncSaveFile(stored: StoredFile) {
-  fileRegistry.set(stored.slug, stored);
-  if (db) {
-    try {
-      const docData: Record<string, any> = {
-        id: stored.id,
-        slug: stored.slug,
-        originalName: stored.originalName,
-        mimeType: stored.mimeType,
-        size: stored.size,
-        filePath: stored.filePath,
-        storageType: stored.storageType || "local",
-        storagePath: stored.storagePath || null,
-        createdAt: stored.createdAt,
-        expiresAt: stored.expiresAt ?? null,
-        maxDownloads: stored.maxDownloads ?? null,
-        downloadCount: stored.downloadCount,
-        isBurnAfterRead: stored.isBurnAfterRead,
-        deleteToken: stored.deleteToken,
-      };
-      if (stored.passwordHash) {
-        docData.passwordHash = stored.passwordHash;
-      }
-      await db.collection("files").doc(stored.slug).set(docData);
-    } catch (err) {
-      console.error("Firestore set document error:", err);
-    }
-  }
-}
-
-// Helper: Retrieve file metadata from Memory or Firestore
-async function getOrFetchStoredFile(slug: string): Promise<StoredFile | null> {
-  if (fileRegistry.has(slug)) {
-    return fileRegistry.get(slug)!;
-  }
-  if (db) {
-    try {
-      const doc = await db.collection("files").doc(slug).get();
-      if (doc.exists) {
-        const stored = doc.data() as StoredFile;
-        // Check if stored in Supabase or exists on disk
-        const fileExists =
-          stored &&
-          (stored.storageType === "supabase" || (stored.filePath && fs.existsSync(stored.filePath)));
-
-        if (fileExists) {
-          fileRegistry.set(slug, stored);
-          return stored;
-        } else if (stored) {
-          // File missing from storage, purge document
-          await db.collection("files").doc(slug).delete();
-        }
-      }
-    } catch (err) {
-      console.error("Firestore get document error:", err);
-    }
-  }
-  return null;
-}
-
-// Helper: Delete file metadata from Memory & Firestore & Supabase Storage
-async function deleteStoredFile(slug: string) {
-  const stored = fileRegistry.get(slug) || (await getOrFetchStoredFile(slug));
-  if (stored) {
-    fileRegistry.delete(slug);
-
-    // Remove from Supabase Storage if present
-    if (stored.storagePath && supabase) {
-      try {
-        await supabase.storage.from(SUPABASE_STORAGE_BUCKET).remove([stored.storagePath]);
-        console.log(`Deleted file from Supabase Storage: ${stored.storagePath}`);
-      } catch (err) {
-        console.error(`Failed to remove file from Supabase: ${stored.storagePath}`, err);
-      }
-    }
-
-    // Remove from local disk if present
-    if (stored.filePath && fs.existsSync(stored.filePath)) {
-      try {
-        fs.unlinkSync(stored.filePath);
-      } catch (err) {
-        console.error(`Failed to delete physical file: ${stored.filePath}`, err);
-      }
-    }
-  }
-  if (db) {
-    try {
-      await db.collection("files").doc(slug).delete();
-    } catch (err) {
-      console.error("Firestore delete document error:", err);
-    }
-  }
-}
-
-// Multer storage engine configuration
+// Multer storage configuration
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    cb(null, UPLOADS_DIR);
+    cb(null, config.uploads.dir);
   },
   filename: (_req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + crypto.randomBytes(6).toString("hex");
@@ -203,7 +34,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 1500 * 1024 * 1024 }, // 1.5 GB limit
+  limits: { fileSize: config.uploads.maxFileSize },
 });
 
 // Helper: Slug generator
@@ -240,23 +71,23 @@ function hashPassword(pwd: string): string {
   return crypto.createHash("sha256").update(pwd).digest("hex");
 }
 
-// Background cleaner running every 15 seconds
+// Background auto-cleaner (Runs every 15 seconds)
 setInterval(async () => {
   const now = Date.now();
   for (const [slug, stored] of fileRegistry.entries()) {
     const isTimeExpired = stored.expiresAt !== null && stored.expiresAt <= now;
-    // Hard ceiling: delete if older than 3 days regardless of settings
-    const isHardMaxExpired = now - stored.createdAt >= MAX_RETENTION_MS;
+    // Hard retention ceiling: delete anything older than 3 days
+    const isHardMaxExpired = now - stored.createdAt >= config.retention.maxRetentionMs;
     const isDownloadLimitReached =
       stored.maxDownloads !== null && stored.downloadCount >= stored.maxDownloads;
 
     if (isTimeExpired || isHardMaxExpired || isDownloadLimitReached) {
-      console.log(`Auto-deleting expired file slug: ${slug} (time=${isTimeExpired}, max3d=${isHardMaxExpired}, dlLimit=${isDownloadLimitReached})`);
+      console.log(`[Auto-Clean] Purging file: ${slug} (expired=${isTimeExpired}, max3d=${isHardMaxExpired}, dlLimit=${isDownloadLimitReached})`);
       await deleteStoredFile(slug);
     }
   }
 
-  // Periodic Firestore sweep for any expired documents
+  // Periodic Firestore sweep for any expired files not currently cached in memory
   if (db) {
     try {
       const expiredSnapshot = await db.collection("files")
@@ -265,7 +96,7 @@ setInterval(async () => {
         .get();
 
       for (const doc of expiredSnapshot.docs) {
-        console.log(`Firestore cleaner auto-deleting slug: ${doc.id}`);
+        console.log(`[Auto-Clean] Firestore sweeping expired file: ${doc.id}`);
         await deleteStoredFile(doc.id);
       }
     } catch {
@@ -276,8 +107,6 @@ setInterval(async () => {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
-
   app.use(express.json());
 
   // API Route: Check custom slug availability
@@ -323,13 +152,13 @@ async function startServer() {
       }
 
       const now = Date.now();
-      // Retention: Default 24 Hours (1440m), Max 3 Days (4320m)
+      // Retention: Default 24 Hours, Maximum 3 Days
       let expMinutes = parseInt(expirationMinutes, 10);
       if (isNaN(expMinutes) || expMinutes <= 0) {
-        expMinutes = DEFAULT_EXPIRATION_MINUTES; // 24 Hours default
+        expMinutes = config.retention.defaultExpirationMinutes; // 24 Hours default
       }
-      if (expMinutes > MAX_EXPIRATION_MINUTES) {
-        expMinutes = MAX_EXPIRATION_MINUTES; // Hard cap at 3 Days
+      if (expMinutes > config.retention.maxExpirationMinutes) {
+        expMinutes = config.retention.maxExpirationMinutes; // 3 Days maximum
       }
 
       const expiresAt = now + expMinutes * 60 * 1000;
@@ -346,33 +175,30 @@ async function startServer() {
 
       const deleteToken = crypto.randomBytes(16).toString("hex");
 
-      // Upload file into Supabase Storage
+      // Upload file to Supabase Cloud Storage
       const storagePath = `${finalSlug}/${req.file.originalname}`;
       let storageType: "supabase" | "local" = "local";
 
-      if (supabase) {
-        try {
-          const fileBuffer = fs.readFileSync(req.file.path);
-          const { error: sbError } = await supabase.storage
-            .from(SUPABASE_STORAGE_BUCKET)
-            .upload(storagePath, fileBuffer, {
-              contentType: req.file.mimetype || "application/octet-stream",
-              upsert: true,
-            });
+      try {
+        const fileBuffer = fs.readFileSync(req.file.path);
+        const uploadResult = await uploadToStorage(
+          storagePath,
+          fileBuffer,
+          req.file.mimetype || "application/octet-stream"
+        );
 
-          if (!sbError) {
-            storageType = "supabase";
-            console.log(`Uploaded to Supabase Storage [${SUPABASE_STORAGE_BUCKET}]: ${storagePath}`);
-            // Unlink temporary file from local disk
-            try {
-              fs.unlinkSync(req.file.path);
-            } catch {}
-          } else {
-            console.warn(`Supabase Storage note (falling back to local cache):`, sbError.message || sbError);
-          }
-        } catch (err: any) {
-          console.warn("Supabase upload exception (falling back to local cache):", err?.message || err);
+        if (uploadResult.success) {
+          storageType = "supabase";
+          console.log(`[Upload] File saved in Supabase Storage: ${storagePath}`);
+          // Remove local disk temp file
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch {}
+        } else {
+          console.warn(`[Upload] Supabase Storage note (falling back to local cache):`, uploadResult.error);
         }
+      } catch (err: any) {
+        console.warn(`[Upload] Supabase Storage exception (falling back to local cache):`, err?.message || err);
       }
 
       const storedFile: StoredFile = {
@@ -395,11 +221,10 @@ async function startServer() {
 
       await syncSaveFile(storedFile);
 
+      // Construct robust production link
       const proto = req.headers["x-forwarded-proto"] || (req.secure ? "https" : "http");
-      const host = req.headers.host || "localhost:3000";
-      const hostUrl = process.env.APP_URL
-        ? process.env.APP_URL.replace(/\/+$/, "")
-        : `${proto}://${host}`;
+      const host = req.headers.host || `localhost:${config.port}`;
+      const hostUrl = config.appUrl ? config.appUrl.replace(/\/+$/, "") : `${proto}://${host}`;
       const shareUrl = `${hostUrl}/f/${finalSlug}`;
 
       return res.json({
@@ -410,7 +235,7 @@ async function startServer() {
         deleteToken,
       });
     } catch (err) {
-      console.error("Upload error:", err);
+      console.error("[Upload] Server upload error:", err);
       return res.status(500).json({ success: false, message: "Server error during upload." });
     }
   });
@@ -428,6 +253,11 @@ async function startServer() {
     if (stored.expiresAt !== null && stored.expiresAt <= now) {
       deleteStoredFile(slug);
       return res.status(410).json({ success: false, isExpired: true, error: "File has expired." });
+    }
+
+    if (now - stored.createdAt >= config.retention.maxRetentionMs) {
+      deleteStoredFile(slug);
+      return res.status(410).json({ success: false, isExpired: true, error: "File exceeded 3-day max retention." });
     }
 
     if (stored.maxDownloads !== null && stored.downloadCount >= stored.maxDownloads) {
@@ -490,9 +320,9 @@ async function startServer() {
       return res.status(410).json({ success: false, error: "This file has expired and was auto-deleted." });
     }
 
-    if (now - stored.createdAt >= MAX_RETENTION_MS) {
+    if (now - stored.createdAt >= config.retention.maxRetentionMs) {
       deleteStoredFile(slug);
-      return res.status(410).json({ success: false, error: "This file has exceeded the 3-day maximum retention period and was deleted." });
+      return res.status(410).json({ success: false, error: "This file exceeded the 3-day max retention period and was deleted." });
     }
 
     if (stored.maxDownloads !== null && stored.downloadCount >= stored.maxDownloads) {
@@ -513,54 +343,39 @@ async function startServer() {
       db.collection("files").doc(slug).update({ downloadCount: stored.downloadCount }).catch(console.error);
     }
 
-    // Set download headers
+    // Set download response headers
     res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(stored.originalName)}"`);
     res.setHeader("Content-Type", stored.mimeType);
     res.setHeader("Content-Length", stored.size);
 
     const handlePostDownload = () => {
-      // If max downloads reached or burn after read, purge immediately after sending
       if (
         stored.isBurnAfterRead ||
         (stored.maxDownloads !== null && stored.downloadCount >= stored.maxDownloads)
       ) {
-        console.log(`Burn after download triggered for slug: ${slug}`);
+        console.log(`[Download] Burn after read triggered for slug: ${slug}`);
         setTimeout(() => deleteStoredFile(slug), 1000);
       }
     };
 
-    // 1. If file is stored in Supabase Storage
-    if (stored.storageType === "supabase" && stored.storagePath && supabase) {
-      try {
-        const { data, error } = await supabase.storage
-          .from(SUPABASE_STORAGE_BUCKET)
-          .download(stored.storagePath);
-
-        if (error || !data) {
-          console.error("Supabase download error:", error);
-          return res.status(404).json({ success: false, error: "File not found in storage bucket." });
-        }
-
-        const arrayBuffer = await data.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        res.send(buffer);
+    // 1. Fetch from Supabase Cloud Storage if available
+    if (stored.storageType === "supabase" && stored.storagePath) {
+      const { data, error } = await downloadFromStorage(stored.storagePath);
+      if (!error && data) {
+        res.send(data);
         handlePostDownload();
         return;
-      } catch (err) {
-        console.error("Supabase download exception:", err);
-        return res.status(500).json({ success: false, error: "Failed to download from cloud storage." });
       }
+      console.error("[Download] Supabase download error:", error);
     }
 
     // 2. Fallback to local disk file stream
     if (fs.existsSync(stored.filePath)) {
       const fileStream = fs.createReadStream(stored.filePath);
       fileStream.pipe(res);
-
       fileStream.on("end", handlePostDownload);
-
       fileStream.on("error", (err) => {
-        console.error("Stream error:", err);
+        console.error("[Download] Stream error:", err);
         if (!res.headersSent) {
           res.status(500).json({ success: false, error: "File streaming error." });
         }
@@ -572,7 +387,7 @@ async function startServer() {
     return res.status(404).json({ success: false, error: "File stream unavailable." });
   });
 
-  // API Route: Preview file stream (inline display for images/videos/audio/pdfs if allowed)
+  // API Route: Preview file stream (inline display for images/videos/audio/pdfs)
   app.post("/api/preview/:slug", async (req, res) => {
     const slug = sanitizeSlug(req.params.slug);
     const { password } = req.body || {};
@@ -591,24 +406,12 @@ async function startServer() {
     res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(stored.originalName)}"`);
     res.setHeader("Content-Type", stored.mimeType);
 
-    // 1. If stored in Supabase Storage
-    if (stored.storageType === "supabase" && stored.storagePath && supabase) {
-      try {
-        const { data, error } = await supabase.storage
-          .from(SUPABASE_STORAGE_BUCKET)
-          .download(stored.storagePath);
-
-        if (error || !data) {
-          return res.status(404).json({ success: false, error: "Preview unavailable in cloud storage." });
-        }
-
-        const arrayBuffer = await data.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        res.send(buffer);
+    // 1. Fetch from Supabase Cloud Storage
+    if (stored.storageType === "supabase" && stored.storagePath) {
+      const { data, error } = await downloadFromStorage(stored.storagePath);
+      if (!error && data) {
+        res.send(data);
         return;
-      } catch (err) {
-        console.error("Supabase preview exception:", err);
-        return res.status(500).json({ success: false, error: "Preview error." });
       }
     }
 
@@ -640,7 +443,7 @@ async function startServer() {
     return res.json({ success: true, message: "File permanently deleted ahead of schedule." });
   });
 
-  // API Route: Fetch active status for a set of slugs (user's uploads)
+  // API Route: Fetch active status for a set of slugs
   app.post("/api/active-status", async (req, res) => {
     const { slugs } = req.body;
     if (!Array.isArray(slugs)) {
@@ -671,11 +474,12 @@ async function startServer() {
     return res.json({ success: true, statuses });
   });
 
-  // Integrate Vite or Static serving
+  // Integrate Vite for Development or Static Serving for Production
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
+      root: process.cwd(),
     });
     app.use(vite.middlewares);
   } else {
@@ -686,8 +490,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`TempShare Server active on http://0.0.0.0:${PORT}`);
+  app.listen(config.port, "0.0.0.0", () => {
+    console.log(`[Server] Nyvo-Share backend active on http://0.0.0.0:${config.port}`);
   });
 }
 
