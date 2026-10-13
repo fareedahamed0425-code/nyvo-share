@@ -1,5 +1,5 @@
 # ==========================================
-# Stage 1: Build Frontend & Backend Bundles
+# Stage 1: Build Backend Server Bundle
 # ==========================================
 FROM node:22-alpine AS builder
 
@@ -14,8 +14,8 @@ RUN npm ci
 # Copy project files
 COPY . .
 
-# Build Vite frontend and bundle backend server
-RUN npm run build
+# Build ONLY backend server (Pure API container, zero frontend assets)
+RUN npm run build:backend
 
 # ==========================================
 # Stage 2: Minimal Production Image
@@ -34,7 +34,7 @@ RUN apk add --no-cache dumb-init
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-# Copy compiled production artifacts from builder
+# Copy compiled backend server from builder
 COPY --from=builder /app/dist ./dist
 
 # Create uploads directory and set permissions for non-root user

@@ -3,7 +3,6 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import multer from "multer";
-import { createServer as createViteServer } from "vite";
 import { config } from "./config";
 import {
   StoredFile,
@@ -522,35 +521,145 @@ async function startServer() {
     return res.json({ success: true, statuses });
   });
 
-  // Integrate Vite for Development or Static Serving for Production
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-      root: process.cwd(),
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    const indexPath = path.join(distPath, "index.html");
-    if (fs.existsSync(indexPath)) {
-      app.use(express.static(distPath));
-      app.get("*", (req, res, next) => {
-        if (req.path.startsWith("/api") || req.path === "/health") {
-          return next();
-        }
-        res.sendFile(indexPath);
-      });
-    } else {
-      app.get("/", (_req, res) => {
-        res.json({
-          service: "Nyvo-Share Secure Backend API",
-          status: "online",
-          message: "API server is operational.",
-        });
-      });
+  // HTML template for root / endpoint when visited in a web browser
+  const API_STATUS_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nyvo-Share | Backend API Service</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background: #050508;
+      color: #fafafa;
+      font-family: 'Inter', -apple-system, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px;
     }
-  }
+    .card {
+      background: rgba(18, 18, 26, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 36px;
+      max-width: 560px;
+      width: 100%;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(99, 102, 241, 0.08);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(34, 197, 94, 0.12);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.25);
+      padding: 5px 14px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      margin-bottom: 20px;
+    }
+    .pulse {
+      width: 8px;
+      height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+    h1 { font-size: 26px; margin: 0 0 8px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    p { color: #94a3b8; font-size: 14px; margin: 0 0 28px; line-height: 1.6; }
+    .section-title { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+    .endpoints { display: flex; flex-direction: column; gap: 8px; }
+    .endpoint {
+      background: rgba(10, 10, 16, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #c7d2fe;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .method { font-weight: 700; font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+    .m-get { color: #34d399; background: rgba(52, 211, 153, 0.1); }
+    .m-post { color: #60a5fa; background: rgba(96, 165, 250, 0.1); }
+    .m-del { color: #f87171; background: rgba(248, 113, 113, 0.1); }
+    .meta-box {
+      margin-top: 24px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #64748b;
+    }
+    .meta-box strong { color: #cbd5e1; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge"><span class="pulse"></span> Backend API Service Active</div>
+    <h1>⚡ Nyvo-Share API</h1>
+    <p>Decoupled backend service. All cloud credentials and storage buckets are securely quarantined on this server.</p>
+    
+    <div class="section-title">Available REST Endpoints</div>
+    <div class="endpoints">
+      <div class="endpoint"><span>/health</span> <span class="method m-get">GET</span></div>
+      <div class="endpoint"><span>/api</span> <span class="method m-get">GET</span></div>
+      <div class="endpoint"><span>/api/check-slug/:slug</span> <span class="method m-get">GET</span></div>
+      <div class="endpoint"><span>/api/upload</span> <span class="method m-post">POST</span></div>
+      <div class="endpoint"><span>/api/file-info/:slug</span> <span class="method m-get">GET</span></div>
+      <div class="endpoint"><span>/api/download/:slug</span> <span class="method m-post">POST</span></div>
+      <div class="endpoint"><span>/api/preview/:slug</span> <span class="method m-post">POST</span></div>
+      <div class="endpoint"><span>/api/file/:slug</span> <span class="method m-del">DELETE</span></div>
+    </div>
+
+    <div class="meta-box">
+      <div>Storage: <strong>Supabase Cloud</strong></div>
+      <div>Retention: <strong>24h Default / 3d Max</strong></div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  // Root route: Show sleek Backend API status dashboard for browsers, JSON for API clients
+  app.get("/", (req, res) => {
+    if (req.accepts("html")) {
+      return res.send(API_STATUS_HTML);
+    }
+    return res.json({
+      service: "Nyvo-Share Secure Backend API",
+      status: "online",
+      version: "1.0.0",
+      storage: "Supabase Cloud Storage",
+      retentionPolicy: "24h default / 72h max ceiling",
+    });
+  });
+
+  // Catch-all JSON 404 for any unregistered paths
+  app.use((_req, res) => {
+    return res.status(404).json({
+      success: false,
+      error: "Endpoint not found on Nyvo-Share backend API.",
+    });
+  });
 
   app.listen(config.port, "0.0.0.0", () => {
     console.log(`[Server] Nyvo-Share backend active on http://0.0.0.0:${config.port}`);
