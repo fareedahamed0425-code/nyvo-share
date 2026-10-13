@@ -1,0 +1,24 @@
+{
+  "entities": {
+    "files": {
+      "title": "Files",
+      "description": "Temporary file metadata and link details",
+      "properties": {
+        "slug": { "type": "string", "description": "Unique custom or generated link slug" },
+        "originalName": { "type": "string", "description": "Original filename" },
+        "mimeType": { "type": "string", "description": "MIME type" },
+        "size": { "type": "number", "description": "File size in bytes" },
+        "createdAt": { "type": "number", "description": "Timestamp created in ms" },
+        "expiresAt": { "type": "number", "description": "Timestamp expires in ms or null" },
+        "maxDownloads": { "type": "number", "description": "Maximum allowed downloads or null" },
+        "downloadCount": { "type": "number", "description": "Current download count" },
+        "passwordHash": { "type": "string", "description": "Hashed password if protected" },
+        "isBurnAfterRead": { "type": "boolean", "description": "Self-destruct on first download" },
+        "deleteToken": { "type": "string", "description": "Owner deletion token" },
+        "storageType": { "type": "string", "description": "Storage backend ('supabase' or 'local')" },
+        "storagePath": { "type": "string", "description": "Path inside cloud storage bucket" }
+      },
+      "required": ["slug", "originalName", "mimeType", "size", "createdAt", "downloadCount", "isBurnAfterRead", "deleteToken"]
+    }
+  }
+}

@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  .glow-orb {
+    position: absolute;
+    width: 450px;
+    height: 450px;
+    border-radius: 50%;
+    filter: blur(100px);
+    z-index: 0;
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  .orb-1 {
+    top: -120px;
+    left: -120px;
+    background: #4f46e5;
+  }
+
+  .orb-2 {
+    bottom: -120px;
+    right: -120px;
+    background: #9333ea;
+  }
+
+  .orb-3 {
+    top: 40%;
+    right: 20%;
+    background: #06b6d4;
+    opacity: 0.2;
+    width: 350px;
+    height: 350px;
+  }
+}
+
