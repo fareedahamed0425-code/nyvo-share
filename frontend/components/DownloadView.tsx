@@ -255,31 +255,31 @@ export const DownloadView: React.FC<DownloadViewProps> = ({ slug, onGoHome }) =>
   if (!metadata) return null;
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-6">
+    <div className="w-full max-w-xl mx-auto space-y-3">
       {/* Top Back Navigation */}
       <button
         onClick={onGoHome}
         id="back-to-home-btn"
-        className="inline-flex items-center space-x-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
+        className="inline-flex items-center space-x-1.5 text-[11px] font-medium text-slate-400 hover:text-slate-200 transition-colors"
       >
-        <ArrowLeft className="w-4 h-4" />
+        <ArrowLeft className="w-3.5 h-3.5" />
         <span>Create your own temporary link</span>
       </button>
 
-      <GlassCard glowColor="indigo" className="p-6 md:p-8 space-y-6">
+      <GlassCard glowColor="indigo" className="p-4 sm:p-5 space-y-3.5">
         {/* File Main Overview Header */}
-        <div className="flex items-start space-x-4">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-500/15 border border-white/15 flex items-center justify-center shrink-0 shadow-inner">
+        <div className="flex items-center space-x-3">
+          <div className="w-12 h-12 rounded-xl bg-indigo-500/15 border border-white/15 flex items-center justify-center shrink-0 shadow-inner">
             {renderIcon()}
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-xl font-bold text-slate-100 break-words" title={metadata.originalName}>
+            <h2 className="text-base sm:text-lg font-bold text-slate-100 truncate" title={metadata.originalName}>
               {metadata.originalName}
             </h2>
-            <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-slate-400">
+            <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[11px] text-slate-400">
               <span className="font-semibold text-slate-200">{formatFileSize(metadata.size)}</span>
               <span>•</span>
-              <span className="uppercase font-mono text-[10px] bg-white/10 px-2 py-0.5 rounded text-indigo-300">
+              <span className="uppercase font-mono text-[9px] bg-white/10 px-1.5 py-0.2 rounded text-indigo-300">
                 {metadata.originalName.split(".").pop() || "FILE"}
               </span>
             </div>
@@ -288,29 +288,29 @@ export const DownloadView: React.FC<DownloadViewProps> = ({ slug, onGoHome }) =>
 
         {/* Burn Warning Banner */}
         {metadata.isBurnAfterRead && (
-          <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/30 flex items-center space-x-3">
-            <Flame className="w-5 h-5 text-rose-400 shrink-0 animate-pulse" />
-            <p className="text-xs text-rose-200 font-medium">
+          <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/30 flex items-center space-x-2">
+            <Flame className="w-4 h-4 text-rose-400 shrink-0 animate-pulse" />
+            <p className="text-[11px] text-rose-200 font-medium">
               Self-Destruct File: Will be permanently deleted off server immediately upon first download!
             </p>
           </div>
         )}
 
         {/* Live Timer and Security Meta */}
-        <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-950/50 border border-white/10">
-          <div className="flex items-center space-x-2.5">
-            <Clock className="w-4 h-4 text-cyan-400 shrink-0" />
+        <div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-slate-950/50 border border-white/10">
+          <div className="flex items-center space-x-2">
+            <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
             <div>
-              <p className="text-[10px] uppercase text-slate-400 font-medium">Expires In</p>
-              <p className="text-xs font-mono font-bold text-cyan-200">{timeLeft.text}</p>
+              <p className="text-[9px] uppercase text-slate-400 font-medium">Expires In</p>
+              <p className="text-[11px] font-mono font-bold text-cyan-200">{timeLeft.text}</p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div className="flex items-center space-x-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <div>
-              <p className="text-[10px] uppercase text-slate-400 font-medium">Downloads</p>
-              <p className="text-xs font-mono font-bold text-slate-200">
+              <p className="text-[9px] uppercase text-slate-400 font-medium">Downloads</p>
+              <p className="text-[11px] font-mono font-bold text-slate-200">
                 {metadata.downloadCount}{" "}
                 {metadata.maxDownloads ? `/ ${metadata.maxDownloads}` : "(Unlimited)"}
               </p>

@@ -138,7 +138,7 @@ export const ActiveUploadsList: React.FC<ActiveUploadsListProps> = ({ onSelectSl
         </button>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1 no-scrollbar">
         {uploads.map((item) => {
           const status = activeStatuses[item.slug];
           const isLive = status ? status.active : true;

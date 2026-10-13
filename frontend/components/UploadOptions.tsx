@@ -9,8 +9,6 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  Sparkles,
-  HelpCircle,
 } from "lucide-react";
 import { UploadOptions } from "../types";
 import { apiFetchJson } from "../utils/api";
@@ -54,7 +52,7 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
       setSlugStatus({
         checking: false,
         available: false,
-        reason: "Must be at least 3 characters",
+        reason: "Min 3 chars",
       });
       return;
     }
@@ -81,7 +79,7 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
       } catch {
         setSlugStatus({ checking: false, available: null });
       }
-    }, 400);
+    }, 350);
 
     return () => clearTimeout(timer);
   }, [slugInput]);
@@ -114,69 +112,67 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 w-full">
       {/* 1. CUSTOM LINK SLUG */}
-      <div className="space-y-2">
-        <label className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-white/60">
-          <span className="flex items-center space-x-2">
-            <Link className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Customize Link Slug</span>
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-[11px] font-semibold text-white/60">
+          <span className="flex items-center space-x-1.5">
+            <Link className="w-3 h-3 text-indigo-400" />
+            <span>Custom Link Slug</span>
           </span>
-          <span className="text-[10px] text-white/40">Optional custom path</span>
-        </label>
+          <span className="text-[10px] text-white/30">Optional path</span>
+        </div>
 
-        <div className="relative">
-          <div className="flex items-center h-11 rounded-xl bg-white/5 border border-white/10 focus-within:border-indigo-400/80 transition-colors overflow-hidden">
-            <span className="h-full flex items-center pl-3.5 pr-2 text-xs font-mono text-white/40 select-none border-r border-white/10 shrink-0">
-              .../f/
-            </span>
-            <input
-              type="text"
-              value={slugInput}
-              onChange={(e) => setSlugInput(e.target.value)}
-              disabled={disabled}
-              placeholder="e.g. sleek-deck-2026"
-              id="custom-slug-input"
-              className="w-full bg-transparent px-3 py-2 text-xs font-mono text-white placeholder-white/20 focus:outline-none"
-            />
-            {slugInput.trim() && (
-              <div className="pr-3 flex items-center shrink-0">
-                {slugStatus.checking ? (
-                  <span className="text-xs text-white/40 animate-pulse">Checking...</span>
-                ) : slugStatus.available === true ? (
-                  <span className="flex items-center text-xs text-emerald-400 font-medium space-x-1">
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Available</span>
-                  </span>
-                ) : slugStatus.available === false ? (
-                  <span className="flex items-center text-xs text-rose-400 font-medium space-x-1">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    <span>{slugStatus.reason || "Taken"}</span>
-                  </span>
-                ) : null}
-              </div>
-            )}
-          </div>
+        <div className="flex items-center h-8.5 rounded-lg bg-white/5 border border-white/10 focus-within:border-indigo-400/80 transition-colors overflow-hidden">
+          <span className="h-full flex items-center pl-2.5 pr-1.5 text-[11px] font-mono text-white/40 select-none border-r border-white/10 shrink-0">
+            .../f/
+          </span>
+          <input
+            type="text"
+            value={slugInput}
+            onChange={(e) => setSlugInput(e.target.value)}
+            disabled={disabled}
+            placeholder="e.g. project-pitch-deck"
+            id="custom-slug-input"
+            className="w-full bg-transparent px-2.5 py-1 text-[11px] font-mono text-white placeholder-white/20 focus:outline-none"
+          />
+          {slugInput.trim() && (
+            <div className="pr-2.5 flex items-center shrink-0">
+              {slugStatus.checking ? (
+                <span className="text-[10px] text-white/40 animate-pulse">Checking...</span>
+              ) : slugStatus.available === true ? (
+                <span className="flex items-center text-[10px] text-emerald-400 font-medium space-x-1">
+                  <Check className="w-3 h-3" />
+                  <span>Available</span>
+                </span>
+              ) : slugStatus.available === false ? (
+                <span className="flex items-center text-[10px] text-rose-400 font-medium space-x-1">
+                  <AlertCircle className="w-3 h-3" />
+                  <span>{slugStatus.reason || "Taken"}</span>
+                </span>
+              ) : null}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 2. EXPIRATION TIMER */}
-      <div className="space-y-2">
-        <label className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-white/60">
-          <span className="flex items-center space-x-2">
-            <Clock className="w-3.5 h-3.5 text-indigo-400" />
+      {/* 2. EXPIRATION TIMER (Compact 5-button segment) */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-[11px] font-semibold text-white/60">
+          <span className="flex items-center space-x-1.5">
+            <Clock className="w-3 h-3 text-indigo-400" />
             <span>Link Expiration</span>
           </span>
-          <span className="text-[10px] text-indigo-300 font-mono">Auto-deletes (24h default, max 3 days)</span>
-        </label>
+          <span className="text-[10px] text-indigo-300 font-mono">24h default (max 3 days)</span>
+        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+        <div className="grid grid-cols-5 gap-1.5">
           {[
-            { label: "10 Mins", minutes: 10 },
-            { label: "1 Hour", minutes: 60 },
-            { label: "6 Hours", minutes: 360 },
-            { label: "24 Hours (Default)", minutes: 1440 },
-            { label: "3 Days (Max)", minutes: 4320 },
+            { label: "10m", full: "10 Mins", minutes: 10 },
+            { label: "1h", full: "1 Hour", minutes: 60 },
+            { label: "6h", full: "6 Hours", minutes: 360 },
+            { label: "24h (Def)", full: "24 Hours (Default)", minutes: 1440 },
+            { label: "3d (Max)", full: "3 Days (Max)", minutes: 4320 },
           ].map((item) => {
             const isSelected = options.expirationMinutes === item.minutes;
             return (
@@ -186,10 +182,11 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
                 onClick={() => handleExpirationChange(item.minutes)}
                 disabled={disabled}
                 id={`expiration-${item.minutes}-btn`}
-                className={`min-h-[42px] px-2 py-2 rounded-xl text-xs font-medium border flex items-center justify-center text-center transition-all ${
+                title={item.full}
+                className={`h-7 px-1 rounded-lg text-[10.5px] font-semibold border flex items-center justify-center text-center transition-all ${
                   isSelected
-                    ? "bg-indigo-600/90 border-indigo-400/60 text-white shadow-md shadow-indigo-500/20"
-                    : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
+                    ? "bg-indigo-600 border-indigo-400/80 text-white shadow-sm shadow-indigo-500/30"
+                    : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white"
                 }`}
               >
                 {item.label}
@@ -199,99 +196,94 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
         </div>
       </div>
 
-      {/* 3. DOWNLOAD LIMIT & BURN AFTER READING (EQUAL HEIGHT ALIGNMENT) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
-        {/* Download limit */}
-        <div className="flex flex-col justify-between p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-2 min-h-[92px]">
-          <label className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-white/60">
-            <Download className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Max Downloads</span>
+      {/* 3. DOWNLOAD LIMIT & BURN AFTER READING (Compact 2-col) */}
+      <div className="grid grid-cols-2 gap-2 items-stretch">
+        {/* Max Downloads */}
+        <div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/10">
+          <label className="flex items-center space-x-1.5 text-[11px] font-medium text-white/70">
+            <Download className="w-3 h-3 text-emerald-400 shrink-0" />
+            <span>Downloads</span>
           </label>
           <select
             value={options.burnAfterRead ? 1 : options.maxDownloads || 0}
             onChange={(e) => handleMaxDownloadsChange(Number(e.target.value))}
             disabled={disabled || options.burnAfterRead}
             id="max-downloads-select"
-            className="w-full h-10 rounded-xl bg-white/5 border border-white/10 px-3 text-xs text-white focus:border-indigo-400 focus:outline-none transition-colors"
+            className="h-6.5 rounded-md bg-white/10 border border-white/10 px-1.5 text-[10.5px] text-white focus:outline-none"
           >
-            <option value={0} className="bg-[#0e0e14] text-white">Unlimited (within duration)</option>
-            <option value={1} className="bg-[#0e0e14] text-white">1 Download (Self-Destruct)</option>
-            <option value={5} className="bg-[#0e0e14] text-white">Max 5 Downloads</option>
-            <option value={10} className="bg-[#0e0e14] text-white">Max 10 Downloads</option>
-            <option value={50} className="bg-[#0e0e14] text-white">Max 50 Downloads</option>
+            <option value={0} className="bg-[#0e0e14]">Unlimited</option>
+            <option value={1} className="bg-[#0e0e14]">1 (Burn)</option>
+            <option value={5} className="bg-[#0e0e14]">Max 5</option>
+            <option value={10} className="bg-[#0e0e14]">Max 10</option>
+            <option value={50} className="bg-[#0e0e14]">Max 50</option>
           </select>
         </div>
 
         {/* Burn after reading switch */}
-        <div className="flex flex-col justify-between p-3.5 rounded-xl bg-rose-950/20 border border-rose-500/20 min-h-[92px]">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Flame className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
-              <span className="text-xs font-semibold text-rose-200">Burn After Reading</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => handleBurnToggle(!options.burnAfterRead)}
-              disabled={disabled}
-              id="burn-after-read-toggle"
-              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors cursor-pointer ${
-                options.burnAfterRead ? "bg-rose-500" : "bg-white/15"
-              }`}
-            >
-              <span
-                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                  options.burnAfterRead ? "translate-x-5" : "translate-x-1"
-                }`}
-              />
-            </button>
+        <div className="flex items-center justify-between p-2 rounded-lg bg-rose-950/25 border border-rose-500/25">
+          <div className="flex items-center space-x-1.5">
+            <Flame className="w-3 h-3 text-rose-400 shrink-0 animate-pulse" />
+            <span className="text-[11px] font-medium text-rose-200">Burn on Read</span>
           </div>
-          <p className="text-[10px] text-rose-300/70 mt-1 leading-tight">
-            File wipes off server instantly after 1st download.
-          </p>
+          <button
+            type="button"
+            onClick={() => handleBurnToggle(!options.burnAfterRead)}
+            disabled={disabled}
+            id="burn-after-read-toggle"
+            className={`relative inline-flex h-4.5 w-8 items-center rounded-full transition-colors cursor-pointer ${
+              options.burnAfterRead ? "bg-rose-500" : "bg-white/15"
+            }`}
+          >
+            <span
+              className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                options.burnAfterRead ? "translate-x-4" : "translate-x-0.5"
+              }`}
+            />
+          </button>
         </div>
       </div>
 
-      {/* 4. PASSWORD PROTECTION */}
-      <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-3">
+      {/* 4. PASSWORD PROTECTION (Inline micro-row) */}
+      <div className="p-2 rounded-lg bg-white/5 border border-white/10 space-y-1.5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Lock className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-xs font-semibold text-white/80">Password Protection</span>
+          <div className="flex items-center space-x-1.5">
+            <Lock className="w-3 h-3 text-amber-400 shrink-0" />
+            <span className="text-[11px] font-medium text-white/70">Password Protection</span>
           </div>
           <button
             type="button"
             onClick={() => handlePasswordToggle(!enablePassword)}
             disabled={disabled}
             id="enable-password-toggle"
-            className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors cursor-pointer ${
+            className={`relative inline-flex h-4.5 w-8 items-center rounded-full transition-colors cursor-pointer ${
               enablePassword ? "bg-amber-500" : "bg-white/15"
             }`}
           >
             <span
-              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                enablePassword ? "translate-x-5" : "translate-x-1"
+              className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                enablePassword ? "translate-x-4" : "translate-x-0.5"
               }`}
             />
           </button>
         </div>
 
         {enablePassword && (
-          <div className="relative pt-1">
+          <div className="relative pt-0.5">
             <input
               type={showPassword ? "text" : "password"}
               value={options.password || ""}
               onChange={(e) => handlePasswordChange(e.target.value)}
               disabled={disabled}
-              placeholder="Set download passcode..."
+              placeholder="Set download password..."
               id="password-protection-input"
-              className="w-full h-10 rounded-xl bg-white/5 border border-amber-500/30 px-3.5 pr-10 text-xs text-white placeholder-white/20 focus:border-amber-400 focus:outline-none"
+              className="w-full h-7 rounded-md bg-white/5 border border-amber-500/30 px-2.5 pr-8 text-[11px] text-white placeholder-white/20 focus:border-amber-400 focus:outline-none"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-white/40 hover:text-white cursor-pointer"
+              className="absolute right-2 top-1/2 -translate-y-1/2 mt-0.2 text-white/40 hover:text-white cursor-pointer"
             >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
             </button>
           </div>
         )}
