@@ -36,7 +36,6 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy compiled production artifacts from builder
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/firebase-applet-config.json ./firebase-applet-config.json
 
 # Create uploads directory and set permissions for non-root user
 RUN mkdir -p /app/uploads && chown -R node:node /app
