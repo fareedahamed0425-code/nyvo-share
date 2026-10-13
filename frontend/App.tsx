@@ -149,7 +149,7 @@ export default function App() {
   const activeCount = getStoredUploads().length;
 
   return (
-    <div className="min-h-screen bg-[#030305] text-white flex flex-col font-['Inter',sans-serif] selection:bg-indigo-500 selection:text-white relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#030305] text-white flex flex-col font-['Inter',sans-serif] selection:bg-indigo-500 selection:text-white relative overflow-x-hidden no-scrollbar">
       {/* Sleek Theme Glow Orbs */}
       <div className="glow-orb orb-1" />
       <div className="glow-orb orb-2" />
@@ -166,41 +166,47 @@ export default function App() {
       />
 
       {/* Main Body */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 md:py-12 relative z-10 space-y-10">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 md:py-10 relative z-10 flex flex-col items-center">
         {/* If user accessed a file download view */}
         {currentViewSlug ? (
-          <DownloadView slug={currentViewSlug} onGoHome={navigateToHome} />
+          <div className="w-full max-w-2xl mx-auto">
+            <DownloadView slug={currentViewSlug} onGoHome={navigateToHome} />
+          </div>
         ) : activeTab === "active" ? (
           /* User's Active Temp Links Tab */
-          <ActiveUploadsList onSelectSlug={(slug) => navigateToSlug(slug)} />
+          <div className="w-full max-w-2xl mx-auto">
+            <ActiveUploadsList onSelectSlug={(slug) => navigateToSlug(slug)} />
+          </div>
         ) : uploadResult ? (
           /* Upload Success Share Screen */
-          <ShareResult
-            slug={uploadResult.slug}
-            shareUrl={uploadResult.shareUrl}
-            expiresAt={uploadResult.expiresAt}
-            fileName={selectedFile?.name || "File"}
-            fileSize={selectedFile ? formatFileSize(selectedFile.size) : ""}
-            burnAfterRead={options.burnAfterRead}
-            requiresPassword={!!options.password}
-            onReset={() => {
-              setUploadResult(null);
-              setSelectedFile(null);
-              setUploadError(null);
-              setOptions({
-                customSlug: "",
-                expirationMinutes: 60,
-                maxDownloads: 0,
-                password: "",
-                burnAfterRead: false,
-              });
-            }}
-          />
+          <div className="w-full max-w-2xl mx-auto">
+            <ShareResult
+              slug={uploadResult.slug}
+              shareUrl={uploadResult.shareUrl}
+              expiresAt={uploadResult.expiresAt}
+              fileName={selectedFile?.name || "File"}
+              fileSize={selectedFile ? formatFileSize(selectedFile.size) : ""}
+              burnAfterRead={options.burnAfterRead}
+              requiresPassword={!!options.password}
+              onReset={() => {
+                setUploadResult(null);
+                setSelectedFile(null);
+                setUploadError(null);
+                setOptions({
+                  customSlug: "",
+                  expirationMinutes: 1440,
+                  maxDownloads: 0,
+                  password: "",
+                  burnAfterRead: false,
+                });
+              }}
+            />
+          </div>
         ) : (
           /* Primary Upload View */
-          <div className="space-y-8 w-full max-w-2xl mx-auto">
+          <div className="space-y-6 w-full max-w-2xl mx-auto">
             {/* Hero Title */}
-            <div className="text-center space-y-4 max-w-2xl mx-auto">
+            <div className="text-center space-y-3 max-w-2xl mx-auto">
               <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/80 text-xs font-medium backdrop-blur-xl">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
                 <span>Custom Ephemeral Links</span>
@@ -213,27 +219,27 @@ export default function App() {
               </p>
             </div>
 
-            {/* Feature Highlights Bar */}
+            {/* Feature Highlights Bar (Equal Height Alignment) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
-              <div className="glass-panel p-3.5 rounded-2xl text-center space-y-1">
+              <div className="glass-panel p-3.5 rounded-2xl text-center flex flex-col items-center justify-center min-h-[96px] space-y-1">
                 <Link className="w-5 h-5 mx-auto text-indigo-400" />
                 <p className="text-xs font-bold text-white/90">Custom Slugs</p>
                 <p className="text-[10px] text-white/40">Unique link names</p>
               </div>
 
-              <div className="glass-panel p-3.5 rounded-2xl text-center space-y-1">
+              <div className="glass-panel p-3.5 rounded-2xl text-center flex flex-col items-center justify-center min-h-[96px] space-y-1">
                 <Clock className="w-5 h-5 mx-auto text-indigo-400" />
                 <p className="text-xs font-bold text-white/90">Auto-Delete</p>
-                <p className="text-[10px] text-white/40">5m to 7 days timer</p>
+                <p className="text-[10px] text-white/40">24h default (3d max)</p>
               </div>
 
-              <div className="glass-panel p-3.5 rounded-2xl text-center space-y-1">
+              <div className="glass-panel p-3.5 rounded-2xl text-center flex flex-col items-center justify-center min-h-[96px] space-y-1">
                 <Flame className="w-5 h-5 mx-auto text-rose-400" />
                 <p className="text-xs font-bold text-white/90">Burn on Read</p>
-                <p className="text-[10px] text-white/40">Instant RAM wipe</p>
+                <p className="text-[10px] text-white/40">Instant wipe on dl</p>
               </div>
 
-              <div className="glass-panel p-3.5 rounded-2xl text-center space-y-1">
+              <div className="glass-panel p-3.5 rounded-2xl text-center flex flex-col items-center justify-center min-h-[96px] space-y-1">
                 <Lock className="w-5 h-5 mx-auto text-amber-400" />
                 <p className="text-xs font-bold text-white/90">Password Lock</p>
                 <p className="text-[10px] text-white/40">Passcode protected</p>
@@ -272,7 +278,7 @@ export default function App() {
                 onClick={handleStartUpload}
                 disabled={!selectedFile || isUploading}
                 id="generate-temp-link-btn"
-                className={`w-full py-4 px-6 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all shadow-lg ${
+                className={`w-full py-3.5 px-6 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all shadow-lg ${
                   !selectedFile || isUploading
                     ? "bg-white/10 text-white/30 cursor-not-allowed border border-white/10"
                     : "bg-white text-black hover:bg-indigo-50 shadow-white/10 hover:scale-[1.01] cursor-pointer"
@@ -294,24 +300,24 @@ export default function App() {
             </GlassCard>
 
             {/* System Status Indicator Box */}
-            <div className="w-full glass-panel rounded-2xl px-6 py-4 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse" />
-                <span className="text-xs font-medium text-white/60">System Status: Firebase Sync & Ephemeral Purge Active</span>
+            <div className="w-full glass-panel rounded-2xl px-5 py-3.5 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse" />
+                <span className="text-xs font-medium text-white/70">Supabase Storage & Ephemeral Cleaner Active</span>
               </div>
-              <span className="text-xs font-mono text-white/30">v2.5.0</span>
+              <span className="text-xs font-mono text-white/40">v2.5.0</span>
             </div>
           </div>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-white/5 py-8 text-xs text-white/30 relative z-10 bg-[#030305]/80 backdrop-blur-md">
+      <footer className="w-full border-t border-white/5 py-6 text-xs text-white/30 relative z-10 bg-[#030305]/80 backdrop-blur-md">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between px-4 sm:px-6 gap-4">
-          <div className="flex items-center space-x-6 text-white/50">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-white/50">
             <span className="flex items-center space-x-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs text-white/70 font-medium">Firebase Database Persisted</span>
+              <span className="text-xs text-white/70 font-medium">Supabase Cloud Storage</span>
             </span>
             <span className="text-white/20">•</span>
             <span className="flex items-center space-x-1.5">
@@ -319,10 +325,9 @@ export default function App() {
               <span className="text-xs text-white/70 font-medium">1.5 GB Max File Limit</span>
             </span>
           </div>
-          <div className="text-center sm:text-right space-y-1">
+          <div className="text-center sm:text-right space-y-0.5">
             <p className="text-xs text-white/40">
-              Real-time Ephemeral Sharing • Automatic Discard Engine<br />
-              All metadata synchronized securely with Firebase Firestore.
+              Real-time Ephemeral Sharing • Automatic Discard Engine
             </p>
           </div>
         </div>

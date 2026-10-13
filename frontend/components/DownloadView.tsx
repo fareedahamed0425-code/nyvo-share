@@ -251,7 +251,7 @@ export const DownloadView: React.FC<DownloadViewProps> = ({ slug, onGoHome }) =>
   if (!metadata) return null;
 
   return (
-    <div className="max-w-xl mx-auto space-y-6">
+    <div className="w-full max-w-2xl mx-auto space-y-6">
       {/* Top Back Navigation */}
       <button
         onClick={onGoHome}

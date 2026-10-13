@@ -120,8 +120,8 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
         </label>
 
         <div className="relative">
-          <div className="flex items-center rounded-xl bg-white/5 border border-white/10 focus-within:border-indigo-400/80 transition-colors overflow-hidden">
-            <span className="pl-3.5 pr-1.5 py-2.5 text-xs font-mono text-white/40 select-none border-r border-white/10 shrink-0">
+          <div className="flex items-center h-11 rounded-xl bg-white/5 border border-white/10 focus-within:border-indigo-400/80 transition-colors overflow-hidden">
+            <span className="h-full flex items-center pl-3.5 pr-2 text-xs font-mono text-white/40 select-none border-r border-white/10 shrink-0">
               .../f/
             </span>
             <input
@@ -131,7 +131,7 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
               disabled={disabled}
               placeholder="e.g. sleek-deck-2026"
               id="custom-slug-input"
-              className="w-full bg-transparent px-3 py-2.5 text-xs font-mono text-white placeholder-white/20 focus:outline-none"
+              className="w-full bg-transparent px-3 py-2 text-xs font-mono text-white placeholder-white/20 focus:outline-none"
             />
             {slugInput.trim() && (
               <div className="pr-3 flex items-center shrink-0">
@@ -164,7 +164,7 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
           <span className="text-[10px] text-indigo-300 font-mono">Auto-deletes (24h default, max 3 days)</span>
         </label>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
           {[
             { label: "10 Mins", minutes: 10 },
             { label: "1 Hour", minutes: 60 },
@@ -180,9 +180,9 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
                 onClick={() => handleExpirationChange(item.minutes)}
                 disabled={disabled}
                 id={`expiration-${item.minutes}-btn`}
-                className={`px-2.5 py-2 rounded-xl text-xs font-medium border text-center transition-all ${
+                className={`min-h-[42px] px-2 py-2 rounded-xl text-xs font-medium border flex items-center justify-center text-center transition-all ${
                   isSelected
-                    ? "bg-indigo-600/80 border-indigo-400/50 text-white shadow-md shadow-indigo-500/20"
+                    ? "bg-indigo-600/90 border-indigo-400/60 text-white shadow-md shadow-indigo-500/20"
                     : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
                 }`}
               >
@@ -193,10 +193,10 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
         </div>
       </div>
 
-      {/* 3. DOWNLOAD LIMIT & BURN AFTER READING */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* 3. DOWNLOAD LIMIT & BURN AFTER READING (EQUAL HEIGHT ALIGNMENT) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
         {/* Download limit */}
-        <div className="space-y-2">
+        <div className="flex flex-col justify-between p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-2 min-h-[92px]">
           <label className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-white/60">
             <Download className="w-3.5 h-3.5 text-emerald-400" />
             <span>Max Downloads</span>
@@ -206,7 +206,7 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
             onChange={(e) => handleMaxDownloadsChange(Number(e.target.value))}
             disabled={disabled || options.burnAfterRead}
             id="max-downloads-select"
-            className="w-full rounded-xl bg-white/5 border border-white/10 px-3.5 py-2.5 text-xs text-white focus:border-indigo-400 focus:outline-none transition-colors"
+            className="w-full h-10 rounded-xl bg-white/5 border border-white/10 px-3 text-xs text-white focus:border-indigo-400 focus:outline-none transition-colors"
           >
             <option value={0} className="bg-[#0e0e14] text-white">Unlimited (within duration)</option>
             <option value={1} className="bg-[#0e0e14] text-white">1 Download (Self-Destruct)</option>
@@ -217,7 +217,7 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
         </div>
 
         {/* Burn after reading switch */}
-        <div className="flex flex-col justify-between p-3.5 rounded-xl bg-rose-950/20 border border-rose-500/20">
+        <div className="flex flex-col justify-between p-3.5 rounded-xl bg-rose-950/20 border border-rose-500/20 min-h-[92px]">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Flame className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
@@ -228,7 +228,7 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
               onClick={() => handleBurnToggle(!options.burnAfterRead)}
               disabled={disabled}
               id="burn-after-read-toggle"
-              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
+              className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors cursor-pointer ${
                 options.burnAfterRead ? "bg-rose-500" : "bg-white/15"
               }`}
             >
@@ -239,14 +239,14 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
               />
             </button>
           </div>
-          <p className="text-[10px] text-rose-300/70 mt-1">
+          <p className="text-[10px] text-rose-300/70 mt-1 leading-tight">
             File wipes off server instantly after 1st download.
           </p>
         </div>
       </div>
 
       {/* 4. PASSWORD PROTECTION */}
-      <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+      <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Lock className="w-3.5 h-3.5 text-amber-400" />
@@ -257,7 +257,7 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
             onClick={() => handlePasswordToggle(!enablePassword)}
             disabled={disabled}
             id="enable-password-toggle"
-            className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
+            className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors cursor-pointer ${
               enablePassword ? "bg-amber-500" : "bg-white/15"
             }`}
           >
@@ -278,12 +278,12 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
               disabled={disabled}
               placeholder="Set download passcode..."
               id="password-protection-input"
-              className="w-full rounded-xl bg-white/5 border border-amber-500/30 px-3.5 py-2 pr-10 text-xs text-white placeholder-white/20 focus:border-amber-400 focus:outline-none"
+              className="w-full h-10 rounded-xl bg-white/5 border border-amber-500/30 px-3.5 pr-10 text-xs text-white placeholder-white/20 focus:border-amber-400 focus:outline-none"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-white/40 hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 mt-0.5 text-white/40 hover:text-white cursor-pointer"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>

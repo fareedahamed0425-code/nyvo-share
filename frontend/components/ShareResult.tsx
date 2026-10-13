@@ -75,7 +75,7 @@ export const ShareResult: React.FC<ShareResultProps> = ({
   )}&color=0f172a&bgcolor=f8fafc`;
 
   return (
-    <GlassCard glowColor="indigo" className="p-6 md:p-8 space-y-6 max-w-xl mx-auto">
+    <GlassCard glowColor="indigo" className="p-6 md:p-8 space-y-6 max-w-2xl mx-auto w-full">
       {/* Header Badge */}
       <div className="flex flex-col items-center text-center space-y-2">
         <div className="w-14 h-14 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.2)]">
