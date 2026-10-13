@@ -118,7 +118,7 @@ export const ActiveUploadsList: React.FC<ActiveUploadsListProps> = ({ onSelectSl
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-4">
+    <div className="w-full max-w-3xl mx-auto space-y-4">
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center space-x-2">
           <Sparkles className="w-4 h-4 text-indigo-400" />
