@@ -25,7 +25,7 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=10000
 
 # Install dumb-init for proper signal forwarding and process cleanup
 RUN apk add --no-cache dumb-init
@@ -42,7 +42,7 @@ RUN mkdir -p /app/uploads && chown -R node:node /app
 
 USER node
 
-EXPOSE 3000
+EXPOSE 10000
 
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/server.cjs"]

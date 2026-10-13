@@ -6,10 +6,10 @@ services:
     region: oregon
     dockerContext: .
     dockerfilePath: Dockerfile
-    healthCheckPath: /
+    healthCheckPath: /health
     envVars:
       - key: PORT
-        value: 3000
+        value: 10000
       - key: NODE_ENV
         value: production
       - key: SUPABASE_URL

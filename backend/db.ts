@@ -26,49 +26,112 @@ export interface StoredFile {
 // In-memory registry for instant lookups
 export const fileRegistry = new Map<string, StoredFile>();
 
-// Initialize Firebase Firestore Database (Server-side only)
+// Local persistent disk storage for file registry
+const registryFilePath = path.join(config.uploads.dir, "registry.json");
+
+function ensureUploadsDir() {
+  if (!fs.existsSync(config.uploads.dir)) {
+    fs.mkdirSync(config.uploads.dir, { recursive: true });
+  }
+}
+
+export function loadRegistryFromDisk() {
+  try {
+    ensureUploadsDir();
+    if (fs.existsSync(registryFilePath)) {
+      const data = fs.readFileSync(registryFilePath, "utf-8");
+      const list: StoredFile[] = JSON.parse(data);
+      if (Array.isArray(list)) {
+        for (const item of list) {
+          if (item && item.slug) {
+            fileRegistry.set(item.slug, item);
+          }
+        }
+        console.log(`[Registry] Loaded ${fileRegistry.size} stored files from persistent registry.`);
+      }
+    }
+  } catch (err) {
+    console.warn("[Registry] Could not load registry.json:", err);
+  }
+}
+
+export function persistRegistryToDisk() {
+  try {
+    ensureUploadsDir();
+    const items = Array.from(fileRegistry.values());
+    fs.writeFileSync(registryFilePath, JSON.stringify(items, null, 2), "utf-8");
+  } catch (err) {
+    console.error("[Registry] Failed to save registry.json:", err);
+  }
+}
+
+// Immediately load existing file registry from disk on boot
+loadRegistryFromDisk();
+
+// Initialize Firebase Firestore Database (Server-side only, ONLY if valid credentials exist)
 export let db: FirebaseFirestore.Firestore | null = null;
 
 try {
   let projectId = config.firebase.projectId;
   let firestoreDbId = config.firebase.firestoreDatabaseId;
+  let credentialObj = null;
 
-  // Fallback to local config file if projectId is not in environment variables
-  const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-  if ((!projectId || !firestoreDbId) && fs.existsSync(configPath)) {
-    const fileConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-    if (!projectId) projectId = fileConfig.projectId;
-    if (!firestoreDbId) firestoreDbId = fileConfig.firestoreDatabaseId;
+  // Check if Firebase service account credentials exist
+  if (config.firebase.clientEmail && config.firebase.privateKey) {
+    credentialObj = cert({
+      projectId: projectId || "nyvo-share",
+      clientEmail: config.firebase.clientEmail,
+      privateKey: config.firebase.privateKey,
+    });
+  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    try {
+      const parsed = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+      credentialObj = cert(parsed);
+      if (!projectId && parsed.project_id) projectId = parsed.project_id;
+    } catch (e) {
+      console.warn("[Database] Could not parse FIREBASE_SERVICE_ACCOUNT_KEY:", e);
+    }
+  } else if (
+    process.env.GOOGLE_APPLICATION_CREDENTIALS &&
+    fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)
+  ) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, "utf-8"));
+      credentialObj = cert(parsed);
+      if (!projectId && parsed.project_id) projectId = parsed.project_id;
+    } catch (e) {
+      console.warn("[Database] Could not load GOOGLE_APPLICATION_CREDENTIALS file:", e);
+    }
   }
 
-  if (projectId) {
+  // CRITICAL: Only initialize Firebase Admin if we have explicit credentials.
+  // Never initialize with bare { projectId } on non-GCP hosts (like Render/Docker),
+  // as google-auth-library will attempt to fetch GCP metadata ADC and crash the node process.
+  if (credentialObj && projectId) {
     if (getAdminApps().length === 0) {
-      if (config.firebase.clientEmail && config.firebase.privateKey) {
-        initAdminApp({
-          projectId,
-          credential: cert({
-            projectId,
-            clientEmail: config.firebase.clientEmail,
-            privateKey: config.firebase.privateKey,
-          }),
-        });
-      } else {
-        initAdminApp({ projectId });
-      }
+      initAdminApp({
+        projectId,
+        credential: credentialObj,
+      });
     }
 
     db = firestoreDbId
       ? getAdminFirestore(getAdminApps()[0], firestoreDbId)
       : getAdminFirestore(getAdminApps()[0]);
-    console.log(`[Database] Firebase Firestore initialized (Project: ${projectId}, DB: ${firestoreDbId || "default"})`);
+    console.log(`[Database] Firebase Firestore initialized with Service Account (Project: ${projectId}, DB: ${firestoreDbId || "default"})`);
+  } else {
+    console.log(`[Database] Running with resilient local disk registry (${registryFilePath}). Firebase Admin ADC bypass active.`);
   }
 } catch (err) {
   console.warn("[Database] Firebase Admin setup note:", err);
+  db = null;
 }
 
-// Save file metadata to Memory & Firestore
+// Save file metadata to Memory, Disk & Firestore
 export async function syncSaveFile(stored: StoredFile) {
   fileRegistry.set(stored.slug, stored);
+  persistRegistryToDisk();
+
   if (db) {
     try {
       const docData: Record<string, any> = {
@@ -102,6 +165,7 @@ export async function getOrFetchStoredFile(slug: string): Promise<StoredFile | n
   if (fileRegistry.has(slug)) {
     return fileRegistry.get(slug)!;
   }
+
   if (db) {
     try {
       const doc = await db.collection("files").doc(slug).get();
@@ -114,6 +178,7 @@ export async function getOrFetchStoredFile(slug: string): Promise<StoredFile | n
 
         if (fileExists) {
           fileRegistry.set(slug, stored);
+          persistRegistryToDisk();
           return stored;
         } else if (stored) {
           // File missing from storage, purge stale document
@@ -127,11 +192,12 @@ export async function getOrFetchStoredFile(slug: string): Promise<StoredFile | n
   return null;
 }
 
-// Delete file metadata from Memory & Firestore & Supabase Storage
+// Delete file metadata from Memory, Disk, Firestore & Supabase Storage
 export async function deleteStoredFile(slug: string) {
   const stored = fileRegistry.get(slug) || (await getOrFetchStoredFile(slug));
   if (stored) {
     fileRegistry.delete(slug);
+    persistRegistryToDisk();
 
     // Remove from Supabase Storage
     if (stored.storagePath) {
@@ -148,6 +214,9 @@ export async function deleteStoredFile(slug: string) {
         console.error(`[Database] Failed to delete physical file: ${stored.filePath}`, err);
       }
     }
+  } else {
+    fileRegistry.delete(slug);
+    persistRegistryToDisk();
   }
 
   if (db) {

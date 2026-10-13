@@ -12,8 +12,18 @@ import {
   syncSaveFile,
   getOrFetchStoredFile,
   deleteStoredFile,
+  persistRegistryToDisk,
 } from "./db";
 import { uploadToStorage, downloadFromStorage } from "./storage";
+
+// Prevent unhandled promise rejections or metadata warnings from terminating the Node server
+process.on("unhandledRejection", (reason: any) => {
+  console.warn("[Process] Handled unhandledRejection:", reason?.message || reason);
+});
+
+process.on("uncaughtException", (error: Error) => {
+  console.error("[Process] Handled uncaughtException:", error?.message || error);
+});
 
 // Ensure local temporary directory exists
 if (!fs.existsSync(config.uploads.dir)) {
@@ -73,41 +83,50 @@ function hashPassword(pwd: string): string {
 
 // Background auto-cleaner (Runs every 15 seconds)
 setInterval(async () => {
-  const now = Date.now();
-  for (const [slug, stored] of fileRegistry.entries()) {
-    const isTimeExpired = stored.expiresAt !== null && stored.expiresAt <= now;
-    // Hard retention ceiling: delete anything older than 3 days
-    const isHardMaxExpired = now - stored.createdAt >= config.retention.maxRetentionMs;
-    const isDownloadLimitReached =
-      stored.maxDownloads !== null && stored.downloadCount >= stored.maxDownloads;
+  try {
+    const now = Date.now();
+    for (const [slug, stored] of Array.from(fileRegistry.entries())) {
+      const isTimeExpired = stored.expiresAt !== null && stored.expiresAt <= now;
+      // Hard retention ceiling: delete anything older than 3 days
+      const isHardMaxExpired = now - stored.createdAt >= config.retention.maxRetentionMs;
+      const isDownloadLimitReached =
+        stored.maxDownloads !== null && stored.downloadCount >= stored.maxDownloads;
 
-    if (isTimeExpired || isHardMaxExpired || isDownloadLimitReached) {
-      console.log(`[Auto-Clean] Purging file: ${slug} (expired=${isTimeExpired}, max3d=${isHardMaxExpired}, dlLimit=${isDownloadLimitReached})`);
-      await deleteStoredFile(slug);
-    }
-  }
-
-  // Periodic Firestore sweep for any expired files not currently cached in memory
-  if (db) {
-    try {
-      const expiredSnapshot = await db.collection("files")
-        .where("expiresAt", "<=", now)
-        .limit(20)
-        .get();
-
-      for (const doc of expiredSnapshot.docs) {
-        console.log(`[Auto-Clean] Firestore sweeping expired file: ${doc.id}`);
-        await deleteStoredFile(doc.id);
+      if (isTimeExpired || isHardMaxExpired || isDownloadLimitReached) {
+        console.log(`[Auto-Clean] Purging file: ${slug} (expired=${isTimeExpired}, max3d=${isHardMaxExpired}, dlLimit=${isDownloadLimitReached})`);
+        await deleteStoredFile(slug);
       }
-    } catch {
-      // Ignore if index not built
     }
+
+    // Periodic Firestore sweep for any expired files not currently cached in memory
+    if (db) {
+      try {
+        const expiredSnapshot = await db.collection("files")
+          .where("expiresAt", "<=", now)
+          .limit(20)
+          .get();
+
+        for (const doc of expiredSnapshot.docs) {
+          console.log(`[Auto-Clean] Firestore sweeping expired file: ${doc.id}`);
+          await deleteStoredFile(doc.id);
+        }
+      } catch {
+        // Silently ignore if index not built or network issue
+      }
+    }
+  } catch (err: any) {
+    console.warn("[Auto-Clean] Cleaner error:", err?.message || err);
   }
 }, 15000);
 
 async function startServer() {
   const app = express();
   app.use(express.json());
+
+  // Health check endpoint for Render / load balancer monitoring
+  app.get("/health", (_req, res) => {
+    return res.status(200).json({ status: "healthy", timestamp: Date.now() });
+  });
 
   // API Route: Check custom slug availability
   app.get("/api/check-slug/:slug", async (req, res) => {
@@ -339,8 +358,9 @@ async function startServer() {
 
     // Increment download count
     stored.downloadCount += 1;
+    persistRegistryToDisk();
     if (db) {
-      db.collection("files").doc(slug).update({ downloadCount: stored.downloadCount }).catch(console.error);
+      db.collection("files").doc(slug).update({ downloadCount: stored.downloadCount }).catch(() => {});
     }
 
     // Set download response headers
