@@ -23,6 +23,14 @@ export const config = {
     bucket: process.env.SUPABASE_STORAGE_BUCKET || "nyvo-share-files",
   },
 
+  // Firebase Firestore Database (Kept strictly on server side)
+  firebase: {
+    projectId: process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || "",
+    firestoreDatabaseId: process.env.FIREBASE_FIRESTORE_DATABASE_ID || process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || "",
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL || "",
+    privateKey: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n") : "",
+  },
+
   // File Retention Policy
   retention: {
     defaultExpirationMinutes: 24 * 60, // 24 Hours default

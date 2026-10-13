@@ -1,0 +1,21 @@
+services:
+  nyvo-share:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nyvo-share
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - APP_URL=http://localhost:3000
+      - SUPABASE_URL=${SUPABASE_URL:-https://jofcylritxybpwievaqe.supabase.co}
+      - SUPABASE_KEY=${SUPABASE_KEY:-sb_publishable_HFSnuv_oiEmiO4Sodkt-Pw_3LJtgRj3}
+      - SUPABASE_STORAGE_BUCKET=${SUPABASE_STORAGE_BUCKET:-nyvo-share-files}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-nyvo-share}
+      - FIREBASE_FIRESTORE_DATABASE_ID=${FIREBASE_FIRESTORE_DATABASE_ID:-ai-studio-nyvoshare-00c5018e-8cd4-43ca-bed8-8c25672fcb50}
+    env_file:
+      - .env.local
