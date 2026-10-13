@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: nyvo-share
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        value: https://jofcylritxybpwievaqe.supabase.co
+      - key: SUPABASE_KEY
+        value: sb_publishable_HFSnuv_oiEmiO4Sodkt-Pw_3LJtgRj3
+      - key: SUPABASE_STORAGE_BUCKET
+        value: nyvo-share-files
+      - key: FIREBASE_PROJECT_ID
+        value: nyvo-share
+      - key: FIREBASE_FIRESTORE_DATABASE_ID
+        value: ai-studio-nyvoshare-00c5018e-8cd4-43ca-bed8-8c25672fcb50
