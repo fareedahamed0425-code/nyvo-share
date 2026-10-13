@@ -4,7 +4,8 @@ services:
     runtime: docker
     plan: free
     region: oregon
-    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerfilePath: Dockerfile
     healthCheckPath: /
     envVars:
       - key: PORT
