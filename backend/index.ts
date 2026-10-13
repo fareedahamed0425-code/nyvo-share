@@ -138,9 +138,46 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Health check endpoint for Render / load balancer monitoring
-  app.get("/health", (_req, res) => {
-    return res.status(200).json({ status: "healthy", timestamp: Date.now() });
+  // Comprehensive Health Check Handlers (GET & HEAD)
+  const healthHandler = (_req: express.Request, res: express.Response) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("X-Service-Name", "nyvo-share-api");
+    return res.status(200).json({
+      status: "healthy",
+      service: "Nyvo-Share Secure Backend API",
+      uptimeSeconds: Math.floor(process.uptime()),
+      timestamp: Date.now(),
+      storage: {
+        provider: "supabase",
+        bucket: config.supabase.bucket,
+        status: "connected",
+      },
+      retention: {
+        defaultMinutes: config.retention.defaultExpirationMinutes,
+        maxMinutes: config.retention.maxExpirationMinutes,
+      },
+    });
+  };
+
+  const headHealthHandler = (_req: express.Request, res: express.Response) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("X-Service-Name", "nyvo-share-api");
+    res.setHeader("Content-Type", "application/json");
+    return res.status(200).end();
+  };
+
+  // Dedicated Health Check Routes for Render, load balancers, and uptime monitors
+  app.get("/health", healthHandler);
+  app.head("/health", headHealthHandler);
+
+  app.get("/api/health", healthHandler);
+  app.head("/api/health", headHealthHandler);
+
+  // HEAD route for root endpoint
+  app.head("/", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("X-Service-Name", "nyvo-share-api");
+    return res.status(200).end();
   });
 
   // Root API status endpoint

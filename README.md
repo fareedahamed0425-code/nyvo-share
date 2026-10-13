@@ -182,6 +182,9 @@ All requests pass through the backend API layer:
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
+| `GET`, `HEAD` | `/health` | Health status probe for Render, uptime monitors & load balancers |
+| `GET`, `HEAD` | `/api/health` | API health route with uptime & cloud storage status |
+| `HEAD` | `/` | Root HEAD probe (returns 200 OK headers instantly) |
 | `GET` | `/api/check-slug/:slug` | Check if a custom link slug is available |
 | `POST` | `/api/upload` | Multipart upload with options (`expirationMinutes`, `password`, `burnAfterRead`) |
 | `GET` | `/api/file-info/:slug` | Retrieve public metadata (size, expiration, password requirement) |
