@@ -13,6 +13,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { UploadOptions } from "../types";
+import { apiFetchJson } from "../utils/api";
 
 interface UploadOptionsProps {
   options: UploadOptions;
@@ -62,15 +63,20 @@ export const UploadOptionsPanel: React.FC<UploadOptionsProps> = ({
 
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/check-slug/${encodeURIComponent(cleaned)}`);
-        const data = await res.json();
-        setSlugStatus({
-          checking: false,
-          available: data.available,
-          reason: data.reason,
-        });
-        if (data.available) {
-          onChange({ ...options, customSlug: cleaned });
+        const { ok, data } = await apiFetchJson<{ available: boolean; reason?: string }>(
+          `/api/check-slug/${encodeURIComponent(cleaned)}`
+        );
+        if (ok && typeof data.available === "boolean") {
+          setSlugStatus({
+            checking: false,
+            available: data.available,
+            reason: data.reason,
+          });
+          if (data.available) {
+            onChange({ ...options, customSlug: cleaned });
+          }
+        } else {
+          setSlugStatus({ checking: false, available: null });
         }
       } catch {
         setSlugStatus({ checking: false, available: null });

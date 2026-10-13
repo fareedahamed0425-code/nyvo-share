@@ -121,11 +121,38 @@ setInterval(async () => {
 
 async function startServer() {
   const app = express();
+
+  // Robust Cross-Origin Resource Sharing (CORS) for decoupled frontend services
+  app.use((req, res, next) => {
+    const origin = req.headers.origin || "*";
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-delete-token, Accept, Range, Origin");
+    res.setHeader("Access-Control-Expose-Headers", "Content-Disposition, Content-Length, Content-Type");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
+    next();
+  });
+
   app.use(express.json());
 
   // Health check endpoint for Render / load balancer monitoring
   app.get("/health", (_req, res) => {
     return res.status(200).json({ status: "healthy", timestamp: Date.now() });
+  });
+
+  // Root API status endpoint
+  app.get("/api", (_req, res) => {
+    return res.json({
+      service: "Nyvo-Share Secure Backend API",
+      status: "online",
+      version: "1.0.0",
+      storage: "Supabase Cloud Storage",
+      retentionPolicy: "24h default / 72h max ceiling",
+    });
   });
 
   // API Route: Check custom slug availability
@@ -240,11 +267,12 @@ async function startServer() {
 
       await syncSaveFile(storedFile);
 
-      // Construct robust production link
+      // Construct robust production link (prioritizing caller frontend origin if present)
+      const callerOrigin = (req.headers.origin as string) || (req.headers.referer ? new URL(req.headers.referer).origin : "");
       const proto = req.headers["x-forwarded-proto"] || (req.secure ? "https" : "http");
       const host = req.headers.host || `localhost:${config.port}`;
-      const hostUrl = config.appUrl ? config.appUrl.replace(/\/+$/, "") : `${proto}://${host}`;
-      const shareUrl = `${hostUrl}/f/${finalSlug}`;
+      const hostUrl = callerOrigin || (config.appUrl ? config.appUrl.replace(/\/+$/, "") : `${proto}://${host}`);
+      const shareUrl = `${hostUrl.replace(/\/+$/, "")}/f/${finalSlug}`;
 
       return res.json({
         success: true,
@@ -504,10 +532,24 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (_req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+    const indexPath = path.join(distPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+      app.use(express.static(distPath));
+      app.get("*", (req, res, next) => {
+        if (req.path.startsWith("/api") || req.path === "/health") {
+          return next();
+        }
+        res.sendFile(indexPath);
+      });
+    } else {
+      app.get("/", (_req, res) => {
+        res.json({
+          service: "Nyvo-Share Secure Backend API",
+          status: "online",
+          message: "API server is operational.",
+        });
+      });
+    }
   }
 
   app.listen(config.port, "0.0.0.0", () => {

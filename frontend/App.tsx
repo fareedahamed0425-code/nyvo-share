@@ -12,6 +12,7 @@ import {
   addStoredUpload,
   getStoredUploads,
 } from "./utils/formatters";
+import { apiFetchJson } from "./utils/api";
 import {
   Sparkles,
   Lock,
@@ -113,14 +114,12 @@ export default function App() {
       }
       formData.append("burnAfterRead", String(options.burnAfterRead));
 
-      const res = await fetch("/api/upload", {
+      const { ok, data } = await apiFetchJson<UploadResponse>("/api/upload", {
         method: "POST",
         body: formData,
       });
 
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
+      if (!ok || !data.success) {
         setUploadError(data.message || "Failed to upload file. Please try again.");
         setIsUploading(false);
         return;

@@ -25,6 +25,7 @@ import {
   formatTimeRemaining,
   getFileCategory,
 } from "../utils/formatters";
+import { apiFetch, apiFetchJson } from "../utils/api";
 
 interface DownloadViewProps {
   slug: string;
@@ -51,13 +52,14 @@ export const DownloadView: React.FC<DownloadViewProps> = ({ slug, onGoHome }) =>
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(`/api/file-info/${encodeURIComponent(slug)}`);
-        const data = await res.json();
+        const { ok, data } = await apiFetchJson<{ success: boolean; error?: string; metadata?: FileMetadata }>(
+          `/api/file-info/${encodeURIComponent(slug)}`
+        );
 
         if (!mounted) return;
 
-        if (!res.ok || !data.success) {
-          setError(data.error || "This file link has expired, hit download limit, or was auto-deleted.");
+        if (!ok || !data.success || !data.metadata) {
+          setError(data.error || (data as any).message || "This file link has expired, hit download limit, or was auto-deleted.");
           setLoading(false);
           return;
         }
@@ -108,17 +110,19 @@ export const DownloadView: React.FC<DownloadViewProps> = ({ slug, onGoHome }) =>
 
     try {
       setPasswordError(null);
-      const res = await fetch(`/api/verify-password/${encodeURIComponent(slug)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      const data = await res.json();
+      const { ok, data } = await apiFetchJson<{ verified: boolean; error?: string }>(
+        `/api/verify-password/${encodeURIComponent(slug)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password }),
+        }
+      );
 
-      if (res.ok && data.verified) {
+      if (ok && data.verified) {
         setIsUnlocked(true);
       } else {
-        setPasswordError("Incorrect password. Please try again.");
+        setPasswordError(data.error || "Incorrect password. Please try again.");
       }
     } catch {
       setPasswordError("Password verification failed.");
@@ -131,7 +135,7 @@ export const DownloadView: React.FC<DownloadViewProps> = ({ slug, onGoHome }) =>
 
     try {
       setIsDownloading(true);
-      const res = await fetch(`/api/download/${encodeURIComponent(slug)}`, {
+      const res = await apiFetch(`/api/download/${encodeURIComponent(slug)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
@@ -139,7 +143,7 @@ export const DownloadView: React.FC<DownloadViewProps> = ({ slug, onGoHome }) =>
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        setError(errorData.error || "Download failed. File may have expired or self-destructed.");
+        setError(errorData.error || (errorData as any).message || "Download failed. File may have expired or self-destructed.");
         setIsDownloading(false);
         return;
       }
@@ -177,7 +181,7 @@ export const DownloadView: React.FC<DownloadViewProps> = ({ slug, onGoHome }) =>
     }
 
     try {
-      const res = await fetch(`/api/preview/${encodeURIComponent(slug)}`, {
+      const res = await apiFetch(`/api/preview/${encodeURIComponent(slug)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),

@@ -70,45 +70,56 @@ nyvo-share/
 * **Node.js**: v20 or v22+
 * **npm**: v10+
 
-### 2. Installation & Setup
+### 2. Architecture & Service Decoupling
+
+Nyvo-Share is architected as two decoupled, independently deployable services:
+
+| Service | Technology | Hosting | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Backend API** | Node.js 22, Express, Multer, Supabase | **Render** (Docker Web Service) | Handles secure file streaming, metadata persistence, retention policies, and CORS. Zero secrets leaked. |
+| **Frontend UI** | React 19, Vite, Tailwind CSS | **Vercel / Netlify / Render** | Responsive, glassmorphic UI. Communicates with backend via `VITE_API_URL` or auto-detection. |
+
+### 3. Installation & Local Development
 
 ```bash
 # Clone repository
-git clone <YOUR_REPO_URL>
+git clone https://github.com/fareedahamed0425-code/nyvo-share.git
 cd nyvo-share
 
 # Install dependencies
 npm install
 
-# Copy sample configuration
-cp .env.example .env.local
+# Run unified full-stack dev server
+npm run dev
+
+# Or run frontend and backend independently:
+npm run dev:backend   # Express API server on http://localhost:3000
+npm run dev:frontend  # Vite React dev server on http://localhost:5173 (proxies /api to backend)
 ```
 
-### 3. Configure `.env.local`
+### 4. Configuration (`.env.local` / Environment Variables)
 
-Set your Supabase and Firebase keys in `.env.local` (kept strictly on the server):
-
+#### Backend Service Environment Variables (Render / Server):
 ```env
-PORT=3000
-APP_URL="http://localhost:3000"
+PORT=10000
+APP_URL="https://your-frontend-app.vercel.app"  # Caller origin for share link generation
 
-# Supabase Storage
+# Supabase Storage (Server-only credentials)
 SUPABASE_URL="https://your-project.supabase.co"
 SUPABASE_KEY="your-supabase-key"
 SUPABASE_STORAGE_BUCKET="nyvo-share-files"
 
-# Firebase Firestore
-FIREBASE_PROJECT_ID="your-firebase-project"
-FIREBASE_FIRESTORE_DATABASE_ID="your-database-id"
+# Firebase (Optional - defaults to persistent JSON disk store)
+FIREBASE_PROJECT_ID="nyvo-share"
+FIREBASE_FIRESTORE_DATABASE_ID="ai-studio-nyvoshare-..."
 ```
 
-### 4. Run Development Server
-
-```bash
-npm run dev
+#### Frontend Service Environment Variables (Vercel / Netlify):
+```env
+# Point to your deployed Render backend:
+VITE_API_URL="https://nyvo-share.onrender.com"
 ```
-
-Visit **`http://localhost:3000`** in your browser.
+*(Note: If deployed on Vercel, the included `vercel.json` automatically proxies `/api/*` to the Render backend even without environment variables!)*
 
 ---
 

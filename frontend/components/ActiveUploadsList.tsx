@@ -19,6 +19,7 @@ import {
   formatFileSize,
   formatTimeRemaining,
 } from "../utils/formatters";
+import { apiFetch, apiFetchJson } from "../utils/api";
 
 interface ActiveUploadsListProps {
   onSelectSlug: (slug: string) => void;
@@ -49,14 +50,13 @@ export const ActiveUploadsList: React.FC<ActiveUploadsListProps> = ({ onSelectSl
 
     try {
       setLoading(true);
-      const res = await fetch("/api/active-status", {
+      const { ok, data } = await apiFetchJson<{ success: boolean; statuses: any[] }>("/api/active-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slugs: list.map((item) => item.slug) }),
       });
-      const data = await res.json();
 
-      if (res.ok && data.success && Array.isArray(data.statuses)) {
+      if (ok && data.success && Array.isArray(data.statuses)) {
         const map: Record<string, any> = {};
         data.statuses.forEach((st: any) => {
           map[st.slug] = st;
@@ -90,7 +90,7 @@ export const ActiveUploadsList: React.FC<ActiveUploadsListProps> = ({ onSelectSl
 
   const handleDeleteEarly = async (slug: string, deleteToken: string) => {
     try {
-      const res = await fetch(`/api/file/${encodeURIComponent(slug)}`, {
+      const res = await apiFetch(`/api/file/${encodeURIComponent(slug)}`, {
         method: "DELETE",
         headers: { "x-delete-token": deleteToken },
       });
